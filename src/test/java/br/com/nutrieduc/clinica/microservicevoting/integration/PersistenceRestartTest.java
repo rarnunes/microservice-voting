@@ -12,6 +12,7 @@ import br.com.nutrieduc.clinica.microservicevoting.domain.enums.VoteChoice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PersistenceRestartTest {
+    // Verifica se pauta, sessão e voto permanecem disponíveis após reiniciar a aplicação usando o mesmo MongoDB.
     @Test
     void agendasSessionsAndVotesSurviveApplicationRestart() {
         try (LocalMongo mongo = new LocalMongo()) {
@@ -19,6 +20,7 @@ class PersistenceRestartTest {
         }
     }
 
+    // Cria uma pauta com sessão e voto, reinicia o contexto da aplicação e confere a pauta e a contagem dos votos.
     private void verifyApplicationRestart(String uri) {
         UUID agendaId;
         try (var application = start(uri)) {
@@ -37,6 +39,7 @@ class PersistenceRestartTest {
         }
     }
 
+    // Inicia o contexto da aplicação sem servidor web, conectado ao MongoDB e ao banco utilizados pelo teste.
     private ConfigurableApplicationContext start(String uri) {
         return new SpringApplicationBuilder(MicroserviceVotingApplication.class)
                 .web(WebApplicationType.NONE)

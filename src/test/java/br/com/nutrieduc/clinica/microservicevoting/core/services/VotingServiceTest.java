@@ -39,11 +39,13 @@ class VotingServiceTest {
     @Mock private VotePort votePort;
     private VotingService service;
 
+    // Cria o serviço com dependências simuladas e relógio fixo antes de cada teste.
     @BeforeEach
     void setUp() {
         service = new VotingService(agendaPort, sessionPort, votePort, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
+    // Verifica se a pauta é criada com identificador, título, descrição e data corretos e enviada para persistência.
     @Test
     void createsAgenda() {
         when(agendaPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -55,6 +57,7 @@ class VotingServiceTest {
         verify(agendaPort).save(created);
     }
 
+    // Verifica se a sessão é criada para a pauta informada com identificador e duração solicitada de cinco minutos.
     @Test
     void opensSessionWithRequestedDuration() {
         existingAgenda();
@@ -66,6 +69,7 @@ class VotingServiceTest {
         assertThat(session.closesAt()).isEqualTo(NOW.plusSeconds(300));
     }
 
+    // Verifica se a sessão recebe a duração padrão de um minuto quando a duração informada é nula.
     @Test
     void defaultsSessionToOneMinute() {
         existingAgenda();
@@ -73,6 +77,7 @@ class VotingServiceTest {
         assertThat(service.openSession(agendaId, null).closesAt()).isEqualTo(NOW.plusSeconds(60));
     }
 
+    // Verifica se durações iguais a zero ou negativas lançam InvalidVotingRequestException sem salvar a sessão.
     @ParameterizedTest
     @ValueSource(ints = {0, -1})
     void rejectsNonPositiveDuration(int duration) {
@@ -82,6 +87,7 @@ class VotingServiceTest {
         verify(sessionPort, never()).save(any());
     }
 
+    // Verifica se uma sessão anterior, mesmo encerrada, impede a criação de outra para a mesma pauta.
     @Test
     void refusesSecondSessionEvenAfterClosing() {
         existingAgenda();
@@ -91,6 +97,7 @@ class VotingServiceTest {
         verify(sessionPort, never()).save(any());
     }
 
+    // Verifica se votos YES e NO são criados com os dados corretos e enviados para persistência durante a sessão aberta.
     @ParameterizedTest
     @EnumSource(VoteChoice.class)
     void castsYesAndNoVotes(VoteChoice choice) {
@@ -106,6 +113,7 @@ class VotingServiceTest {
         verify(votePort).save(vote);
     }
 
+    // Verifica se votar em uma pauta sem sessão lança VotingSessionNotFoundException sem acessar a persistência de votos.
     @Test
     void refusesVoteWithoutSession() {
         existingAgenda();
@@ -114,6 +122,7 @@ class VotingServiceTest {
         verifyNoInteractions(votePort);
     }
 
+    // Verifica se votos no instante de encerramento ou após ele são rejeitados sem acessar a persistência de votos.
     @ParameterizedTest
     @ValueSource(longs = {-1, 0})
     void refusesVoteAtOrAfterClosingTime(long secondsUntilClosing) {
@@ -124,6 +133,7 @@ class VotingServiceTest {
         verifyNoInteractions(votePort);
     }
 
+    // Verifica se o serviço propaga DuplicateVoteException quando a persistência rejeita um voto duplicado.
     @Test
     void propagatesDuplicateVoteConflict() {
         existingAgenda();
@@ -133,6 +143,7 @@ class VotingServiceTest {
                 .isInstanceOf(DuplicateVoteException.class);
     }
 
+    // Verifica os totais, a vitória de YES ou NO e o empate, inclusive sem votos, mantendo o status de sessão aberta.
     @ParameterizedTest
     @CsvSource({"10,5,YES", "5,10,NO", "5,5,TIE", "0,0,TIE"})
     void calculatesResult(long yes, long no, VotingResult expected) {
@@ -148,6 +159,7 @@ class VotingServiceTest {
         assertThat(result.sessionStatus()).isEqualTo(SessionStatus.OPEN);
     }
 
+    // Verifica se o resultado informa a sessão como encerrada exatamente no instante limite de votação.
     @Test
     void returnsClosedStatusAtDeadline() {
         existingAgenda();
@@ -156,6 +168,7 @@ class VotingServiceTest {
         assertThat(service.getResult(agendaId).sessionStatus()).isEqualTo(SessionStatus.CLOSED);
     }
 
+    // Verifica se consultar o resultado sem sessão lança VotingSessionNotFoundException sem consultar os votos.
     @Test
     void resultRequiresSession() {
         existingAgenda();
@@ -163,6 +176,8 @@ class VotingServiceTest {
         verifyNoInteractions(votePort);
     }
 
+    // Verifica se consultar pauta, abrir sessão, votar e obter resultado exigem uma pauta existente.
+    // Confirma que a ausência da pauta lança AgendaNotFoundException sem acessar sessões ou votos.
     @Test
     void rejectsOperationsOnMissingAgenda() {
         assertThatThrownBy(() -> service.getAgenda(agendaId)).isInstanceOf(AgendaNotFoundException.class);
@@ -173,10 +188,12 @@ class VotingServiceTest {
         verifyNoInteractions(sessionPort, votePort);
     }
 
+    // Configura a dependência simulada para retornar uma pauta existente ao consultar seu identificador.
     private void existingAgenda() {
         when(agendaPort.findById(agendaId)).thenReturn(Optional.of(agenda));
     }
 
+    // Configura a dependência simulada para retornar uma sessão da pauta com o instante de encerramento informado.
     private void sessionClosingAt(Instant closesAt) {
         when(sessionPort.findByAgendaId(agendaId)).thenReturn(Optional.of(
                 new VotingSession(UUID.randomUUID(), agendaId, NOW.minusSeconds(60), closesAt)));
