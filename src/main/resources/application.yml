@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: voting-api
+  data:
+    mongodb:
+      uri: mongodb+srv://rafaelengcomp_db_user:cWvEydgS7GXz0POV@clusterlab.0eofkhj.mongodb.net/?appName=ClusterLAB
+      database: votingdb
+      auto-index-creation: true
+  jackson:
+    deserialization:
+      fail-on-numbers-for-enums: true
+      accept-float-as-int: false
+
+server:
+  port: ${PORT:8080}
+
+springdoc:
+  override-with-generic-response: false

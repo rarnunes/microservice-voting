@@ -1,0 +1,10 @@
+/target/
+/data/
+.env
+.env.*
+application-local.yml
+application-local.yaml
+application-local.properties
+.idea/
+*.iml
+.DS_Store
